@@ -1,0 +1,14 @@
+runtime: nodejs18
+env: standard  
+  
+env_variables:  
+  DB_HOST:
+  DB_PORT:
+  DB_URL:
+  DB_NAME:
+  DB_PASSWORD:
+  DB_USER:
+  
+handlers:  
+  - url: /.*  
+    script: auto  
