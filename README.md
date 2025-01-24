@@ -46,6 +46,12 @@ Install dependencies
   npm install
 ```
 
+Migrate Table (in case this is your first time)
+
+```bash
+  node migrate-tables.js
+```
+
 Start the server
 
 ```bash
