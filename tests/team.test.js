@@ -4,16 +4,23 @@ const app = require("../server/server"); // Adjust path to your LoopBack server
 describe("Team API", () => {
   let createdTeam;
   let createdMember;
+  const arrayCreatedTeam = [];
   const rootTeamsUrl = "/api/Teams";
 
   afterAll(async () => {
     // Clean up the team created during the test
     const ds = app.datasources.postgresql; // Your datasource
 
+    // Create a string of placeholders for the SQL query
+    const placeholders = arrayCreatedTeam.map((_, index) => `$${index + 1}`).join(", ");
+
+    // Construct the SQL query
+    const query = `DELETE FROM Team WHERE id IN (${placeholders})`;
+
     await new Promise((resolve, reject) => {
       ds.connector.execute(
-        `DELETE FROM Team WHERE id = $1`,
-        [createdTeam.id],
+        query,
+        arrayCreatedTeam,
         (err) => {
           if (err) return reject(err);
           resolve();
@@ -55,6 +62,7 @@ describe("Team API", () => {
     expect(res.body).toHaveProperty("name", newName);
     expect(res.body).toHaveProperty("description", createdTeam.description);
 
+    arrayCreatedTeam.push(createdTeam.id);
     createdTeam = res.body;
   });
 
@@ -84,6 +92,7 @@ describe("Team API", () => {
     expect(res.body).toHaveProperty("name", newName);
     expect(res.body).toHaveProperty("description", newDesc);
 
+    arrayCreatedTeam.push(createdTeam.id);
     createdTeam = res.body;
   });
 
@@ -112,6 +121,7 @@ describe("Team API", () => {
     expect(res.body.name).toBe(newTeam.name);
     expect(res.body.description).toBe(newTeam.description);
 
+    arrayCreatedTeam.push(createdTeam.id);
     createdTeam = res.body;
   });
 
@@ -208,6 +218,7 @@ describe("Team API", () => {
     expect(res.body).toHaveProperty("name", newName);
     expect(res.body).toHaveProperty("role", newRole);
 
+    arrayCreatedTeam.push(createdTeam.id);
     createdMember = res.body;
   });
 
@@ -315,6 +326,7 @@ describe("Team API", () => {
 
     expect(res.body).toHaveProperty("id");
 
+    arrayCreatedTeam.push(createdTeam.id);
     createdTeam = res.body;
   });
 
@@ -356,5 +368,7 @@ describe("Team API", () => {
 
     expect(res.body).toHaveProperty("id", createdTeam.id);
     expect(res.body).toHaveProperty("description", newDesc);
+
+    arrayCreatedTeam.push(res.body.id);
   });
 });
