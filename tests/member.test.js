@@ -3,6 +3,8 @@ const app = require("../server/server"); // Adjust path to your LoopBack server
 
 describe("Member API", () => {
   let createdMemberId;
+  const arrayCreatedTeam = [];
+  const arrayCreatedMember = [];
   const rootMembersUrl = "/api/Members";
   const rootTeamsUrl = "/api/Teams";
   let teamId; // Assuming a valid team ID for testing
@@ -11,15 +13,33 @@ describe("Member API", () => {
     // Clean up the member created during the test
     const ds = app.datasources.postgresql; // Your datasource
 
+    // Create a string of placeholders for the SQL query
+    const placeholdersMem = arrayCreatedMember
+      .map((_, index) => `$${index + 1}`)
+      .join(", ");
+
+    // Construct the SQL query
+    const queryMem = `DELETE FROM Member WHERE id IN (${placeholdersMem})`;
+
     await new Promise((resolve, reject) => {
-      ds.connector.execute(
-        `DELETE FROM Member WHERE id = $1`,
-        [createdMemberId],
-        (err) => {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
+      ds.connector.execute(queryMem, arrayCreatedMember, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
+    // Clean up the team created during the test
+    const placeholdersTeam = arrayCreatedTeam
+      .map((_, index) => `$${index + 1}`)
+      .join(", ");
+
+    const queryTea = `DELETE FROM Team WHERE id IN (${placeholdersTeam})`;
+
+    await new Promise((resolve, reject) => {
+      ds.connector.execute(queryTea, arrayCreatedTeam, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
     });
 
     ds.disconnect();
@@ -45,74 +65,76 @@ describe("Member API", () => {
       .expect("Content-Type", /json/)
       .expect(200);
 
-    createdMemberId = res.body.id;
-    teamId = resTeam.body.id;
+      createdMemberId = res.body.id;
+      teamId = resTeam.body.id;
+      arrayCreatedTeam.push(resTeam.body.id);
+      arrayCreatedMember.push(res.body.id);  
   });
 
   // GET /Members
-  it("should fetch all members", async () => {  
-    const res = await request(app)  
-      .get(rootMembersUrl)  
-      .expect("Content-Type", /json/)  
-      .expect(200);  
-  
-    expect(res.body).toBeInstanceOf(Array);  
-  });  
-  
+  it("should fetch all members", async () => {
+    const res = await request(app)
+      .get(rootMembersUrl)
+      .expect("Content-Type", /json/)
+      .expect(200);
+
+    expect(res.body).toBeInstanceOf(Array);
+  });
+
   // POST /Members
-  it("should create a new member", async () => {  
+  it("should create a new member", async () => {
     const newName = "John Doe";
     const newRole = "member";
-    const newMember = { name: newName, role: newRole, teamId };  
-  
-    const res = await request(app)  
+    const newMember = { name: newName, role: newRole, teamId };
+
+    const res = await request(app)
       .post(rootMembersUrl)
-      .send(newMember)  
-      .expect("Content-Type", /json/)  
-      .expect(200);  
-  
-    expect(res.body).toHaveProperty("id");  
-    expect(res.body.name).toBe(newMember.name);  
-    expect(res.body.role).toBe(newMember.role);  
-  
-    createdMemberId = res.body.id; // Store the created member ID for later tests  
-  });  
-  
+      .send(newMember)
+      .expect("Content-Type", /json/)
+      .expect(200);
+
+    expect(res.body).toHaveProperty("id");
+    expect(res.body.name).toBe(newMember.name);
+    expect(res.body.role).toBe(newMember.role);
+
+    arrayCreatedMember.push(res.body.id); 
+    createdMemberId = res.body.id; // Store the created member ID for later tests
+  });
+
   // PUT /Members
-  it("should update an existing member", async () => {  
+  it("should update an existing member", async () => {
     const newName = "John Doe Updated";
     const newRole = "member updated";
-    const updatedMember = { name: newName, role: newRole, teamId };  
+    const updatedMember = { name: newName, role: newRole, teamId };
 
-    const res = await request(app)  
-      .put(`${rootMembersUrl}/${createdMemberId}`)  
-      .send(updatedMember)  
-      .expect("Content-Type", /json/)  
-      .expect(200);  
-  
-    expect(res.body).toHaveProperty("id", createdMemberId);  
-    expect(res.body.name).toBe(updatedMember.name);  
-    expect(res.body.role).toBe(updatedMember.role);  
+    const res = await request(app)
+      .put(`${rootMembersUrl}/${createdMemberId}`)
+      .send(updatedMember)
+      .expect("Content-Type", /json/)
+      .expect(200);
 
-  });  
-  
+    expect(res.body).toHaveProperty("id", createdMemberId);
+    expect(res.body.name).toBe(updatedMember.name);
+    expect(res.body.role).toBe(updatedMember.role);
+  });
+
   // PATCH /Members
-  it("should patch an existing member", async () => {  
+  it("should patch an existing member", async () => {
     const newName = "John Doe Patched";
     const newRole = "member patched";
-    const updatedMember = { id: createdMemberId, name: newName, role: newRole }; 
-  
-    const res = await request(app)  
-      .patch(`${rootMembersUrl}/${createdMemberId}`)  
-      .send(updatedMember)  
-      .expect("Content-Type", /json/)  
-      .expect(200);  
-  
-    expect(res.body).toHaveProperty("id", createdMemberId);  
-    expect(res.body.name).toBe(updatedMember.name);  
+    const updatedMember = { id: createdMemberId, name: newName, role: newRole };
+
+    const res = await request(app)
+      .patch(`${rootMembersUrl}/${createdMemberId}`)
+      .send(updatedMember)
+      .expect("Content-Type", /json/)
+      .expect(200);
+
+    expect(res.body).toHaveProperty("id", createdMemberId);
+    expect(res.body.name).toBe(updatedMember.name);
     expect(res.body.role).toBe(updatedMember.role);
     expect(res.body.teamId).toBe(teamId);
-  }); 
+  });
 
   // PATCH /Members/{id}
   it("should update a member's role using PATCH", async () => {
@@ -197,6 +219,8 @@ describe("Member API", () => {
     expect(res.body).toHaveProperty("id", createdMemberId);
     expect(res.body).toHaveProperty("role", newRole);
     expect(res.body).toHaveProperty("name", newName);
+
+    arrayCreatedMember.push(res.body.id); 
   });
 
   // GET /Members/{id}/team
@@ -230,6 +254,8 @@ describe("Member API", () => {
 
     expect(res.body).toHaveProperty("id");
     expect(res.body.name).toBe(newMember.name);
+
+    arrayCreatedMember.push(res.body.id); 
   });
 
   // GET /Members/{id}/team/members/{fk}
@@ -299,15 +325,15 @@ describe("Member API", () => {
 
   // GET /Members/findOne
   it("should find one member", async () => {
-    const filter = { where: { id: createdMemberId } };  
-    const encodedFilter = encodeURIComponent(JSON.stringify(filter)); // Correctly encode the filter  
-  
-    const res = await request(app)  
-      .get(`${rootMembersUrl}/findOne?filter=${encodedFilter}`)  
-      .expect("Content-Type", /json/)  
-      .expect(200);  
-  
-    expect(res.body).toHaveProperty("id", createdMemberId);  
+    const filter = { where: { id: createdMemberId } };
+    const encodedFilter = encodeURIComponent(JSON.stringify(filter)); // Correctly encode the filter
+
+    const res = await request(app)
+      .get(`${rootMembersUrl}/findOne?filter=${encodedFilter}`)
+      .expect("Content-Type", /json/)
+      .expect(200);
+
+    expect(res.body).toHaveProperty("id", createdMemberId);
   });
 
   // POST /Members/replaceOrCreate
@@ -321,6 +347,8 @@ describe("Member API", () => {
 
     expect(res.body).toHaveProperty("id");
     expect(res.body.name).toBe(newMember.name);
+
+    arrayCreatedMember.push(res.body.id); 
   });
 
   // POST /Members/update
@@ -355,6 +383,8 @@ describe("Member API", () => {
 
     expect(res.body).toHaveProperty("id", createdMemberId);
     expect(res.body.role).toBe(updateData.role);
+
+    arrayCreatedMember.push(res.body.id); 
   });
 
   // GET /Members/{id}/team/members/count
